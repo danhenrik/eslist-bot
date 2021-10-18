@@ -1,10 +1,16 @@
 from pymongo import response
 from telegram.ext import CommandHandler, Updater
 from env import TOKEN
-from actions import say
+from actions import say, give_feedback
 from database.db import DatabaseException
 from database.Event import Event, EventService
+from database.Subscription import Subscription, SubscriptionService
 
+
+# Possible future features
+# Command /myEvents tho show my subscribed events
+# Event description
+# Event deadlines
 
 # Return if the current context of the message is in private
 def isPrivate(update):
@@ -28,18 +34,18 @@ def start(update, context):
         say(update, context, ("Hello!\n I'm the Event Subscriptions List bot, all i do is manage event subscriptions list in" +
                               " groups, my mission is to organize subscriptions lists in a better way avoiding message flooding."))
     else:
-        say(update, context, ("I'm already listening (only commands), send /help for more information about the commands."))
+        say(update, context, ("I'm already listening (only to commands), send /help for more information about the commands."))
 
 
 def getHelp(update, context):
     response_message = "Commands:\n" +\
-        "/create <event-name> : Creates a new event\n" + \
-        "/in <event-name> : Subscribes to a created event\n" +\
-        "/out <event-name> : Unsubscribe yourself from the event\n" +\
-        "/delete <event-name> : Delete the event\n" +\
-        "/list <event-name> : List the subscribers names\n" +\
+        "/create <b>event-name</b> : Creates a new event\n" + \
+        "/delete <b>event-name</b> : Delete the event\n" +\
+        "/list <b>event-name</b> : List the subscribers names\n" +\
         "/events : List all the registered events in the current group\n" +\
-        "/feedback <your-message> : Send me a feedback if you found some bug or something that may be improved (Private)\n"
+        "/in <b>event-name</b>: Subscribes to a created event\n" +\
+        "/out <b>event-name</b> : Unsubscribe yourself from the event\n" +\
+        "/feedback <b>your-message</b> : Send me a feedback if you found some bug or something that may be improved (Private)\n"
     if not isPrivate(update):
         say(update, context, response_message)
     else:
@@ -51,53 +57,138 @@ def getHelp(update, context):
 def create(update, context):
     try:
         if isPrivate(update):
-            say(update, context, 'This command only works for groups')
+            say(update, context, 'This command only works in groups', True)
             return
         args = extractArgs(update)
-        if args:
-            chatID = update.message.chat.id
-            creatorID = update.message.from_user.id
-            event = Event(args, chatID, creatorID)
-            event.save()
-            say(update, context, 'Event succesfully created!')
-        else:
-            say(update, context, 'You need to tell me a name for the event')
+        if not args:
+            say(update, context, 'You need to tell me a name for the event', True)
+            return
+        chatID = update.message.chat.id
+        creatorID = update.message.from_user.id
+        event = Event(args, chatID, creatorID)
+        event.save()
+        say(update, context, '<b>' + event.Name + '</b> succesfully created')
     except DatabaseException as error:
         say(update, context, error.args[0])
 
 
 def delete(update, context):
     if isPrivate(update):
-        say(update, context, 'This command only works for groups')
+        say(update, context, 'This command only works in groups', True)
         return
     args = extractArgs(update)
-    if args:
-        chatID = update.message.chat.id
-        creatorID = update.message.from_user.id
-        event = EventService.find_by_name(args, chatID)
-        if event.CreatorID == creatorID:
-            event.delete()
-            say(update, context, 'Event succesfully deleted!')
-        else:
-            say(update, context, 'You need to be the event creator to delete it')
+    if not args:
+        say(update, context, 'You need to tell me the name of the event', True)
+        return
+    chatID = update.message.chat.id
+    event = EventService.find_by_name(args, chatID)
+    if not event:
+        say(update, context, "There's no event registered with the given name", True)
+        return
+    creatorID = update.message.from_user.id
+    if event.CreatorID == creatorID:
+        event.delete()
+        say(update, context, '<b>' + event.Name + '</b> succesfully deleted!')
     else:
-        say(update, context, 'You need to tell me the name of the event')
+        say(update, context, 'You need to be the event creator to delete it', True)
 
 
 def events(update, context):
     if isPrivate(update):
-        say(update, context, 'This command only works for groups')
+        say(update, context, 'This command only works in groups', True)
         return
     chatID = update.message.chat.id
     events = EventService.find_by_chat_id(chatID)
-    if events:
-        response_message = 'Registered events:\n'
-        for i in range(0, len(events)):
-            response_message = response_message + \
-                str(i+1) + ' - '+ events[i].Name + '\n'
-        say(update, context, response_message)
-    else:
-        say(update, context, "There's no event registered yet!")
+    if not events:
+        say(update, context, "There's no events registered yet", True)
+        return
+    response_message = 'Registered events:\n'
+    for i in range(0, len(events)):
+        response_message = response_message + \
+            str(i+1) + ' - ' + events[i].Name + '\n'
+    say(update, context, response_message)
+
+
+def subscribe(update, context):
+    try:
+        if isPrivate(update):
+            say(update, context, 'This command only works in groups', True)
+            return
+        args = extractArgs(update)
+        if not args:
+            say(update, context, 'You need to tell me the name of the event', True)
+            return
+        chatID = update.message.chat.id
+        event = EventService.find_by_name(args, chatID)
+        if not event:
+            say(update, context, "There's no events with the given name", True)
+            return
+        subscriberID = update.message.from_user.id
+        subscriberName = update.message.from_user.name
+        sub = Subscription(subscriberName, subscriberID, event.ID)
+        sub.save()
+        say(update, context, 'Successfully subscribed to <b>' +
+            event.Name + '</b>', True)
+    except DatabaseException as error:
+        say(update, context, error.args[0])
+
+
+def unsubscribe(update, context):
+    if isPrivate(update):
+        say(update, context, 'This command only works in groups', True)
+        return
+    args = extractArgs(update)
+    if not args:
+        say(update, context, 'You need to tell me the name of the event', True)
+        return
+    chatID = update.message.chat.id
+    event = EventService.find_by_name(args, chatID)
+    if not event:
+        say(update, context, "There's no events with the given name", True)
+        return
+    subscriberID = update.message.from_user.id
+    subscription = SubscriptionService.find_by_event_id(event.ID, subscriberID)
+    if not subscription:
+        say(update, context, "You're not subscribed to this event", True)
+        return
+    subscription.delete()
+    say(update, context, 'Successfully unsubscribed from <b>' +
+        event.Name + '</b>', True)
+
+
+def list_sub(update, context):
+    if isPrivate(update):
+        say(update, context, 'This command only works in groups', True)
+        return
+    args = extractArgs(update)
+    if not args:
+        say(update, context, 'You need to tell me the name of the event', True)
+        return
+    chatID = update.message.chat.id
+    event = EventService.find_by_name(args, chatID)
+    if not event:
+        say(update, context, "There's no events with the given name", True)
+        return
+    subs = event.get_subs()
+    if not subs:
+        say(update, context, "There's no subscriptions to this event yet", True)
+        return
+    response_message = '<b>' + event.Name + '</b> subscribers:\n'
+    for i in range(0, len(subs)):
+        response_message = response_message + \
+            str(i+1) + ' - <b>' + subs[i].Name + '</b>\n'
+    say(update, context, response_message, True)
+
+
+def feedback(update, context):
+    if not isPrivate(update):
+        say(update, context,
+            "If you want to send me a feedback please do so on my private")
+        return
+    message = extractArgs(update)
+    sender = update.message.from_user
+    give_feedback(context, message, sender)
+    say(update, context, "Thank you for your feedback 😄\n")
 
 
 def main():
@@ -108,8 +199,10 @@ def main():
     dispatcher.add_handler(CommandHandler("create", create))
     dispatcher.add_handler(CommandHandler("delete", delete))
     dispatcher.add_handler(CommandHandler("events", events))
-    dispatcher.add_handler(CommandHandler("in", start))
-    dispatcher.add_handler(CommandHandler("out", start))
+    dispatcher.add_handler(CommandHandler("in", subscribe))
+    dispatcher.add_handler(CommandHandler("out", unsubscribe))
+    dispatcher.add_handler(CommandHandler("list", list_sub))
+    dispatcher.add_handler(CommandHandler("feedback", feedback))
     dispatcher.add_handler(CommandHandler("help", getHelp))
 
     updater.start_polling()

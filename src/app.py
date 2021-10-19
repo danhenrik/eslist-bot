@@ -32,32 +32,36 @@ def extractArgs(update):
 def start(update, context):
     if isPrivate(update):
         say(update, context, ("Hello!\n I'm the Event Subscriptions List bot, all i do is manage event subscriptions list in" +
-                              " groups, my mission is to organize subscriptions lists in a better way avoiding message flooding."))
+                              " groups, my mission is to organize subscriptions lists in a better way reducing message flooding."))
     else:
         say(update, context, ("I'm already listening (only to commands), send /help for more information about the commands."))
 
 
 def getHelp(update, context):
-    response_message = "Commands:\n" +\
-        "/create <b>event-name</b> : Creates a new event\n" + \
-        "/delete <b>event-name</b> : Delete the event\n" +\
-        "/list <b>event-name</b> : List the subscribers names\n" +\
-        "/events : List all the registered events in the current group\n" +\
-        "/in <b>event-name</b>: Subscribes to a created event\n" +\
-        "/out <b>event-name</b> : Unsubscribe yourself from the event\n" +\
-        "/feedback <b>your-message</b> : Send me a feedback if you found some bug or something that may be improved (Private)\n"
     if not isPrivate(update):
-        say(update, context, response_message)
+        say(update, context, "Commands:\n" +
+            "/create <b>event-name</b> : Creates a new event\n" +
+            "/delete <b>event-name</b> : Delete the event\n" +
+            "/list <b>event-name</b> : List the subscribers names\n" +
+            "/events : List all the registered events in the current group\n" +
+            "/in <b>event-name</b>: Subscribes to a created event\n" +
+            "/out <b>event-name</b> : Unsubscribe yourself from the event\n" +
+            "/feedback <b>your-message</b> : Send me a feedback if you found some bug or something that may be improved (Private only)\n")
     else:
-        response_message = response_message + \
-            "\nThose commands will only work in groups!\n"
-        say(update, context, response_message)
+        say(update, context,  "Commands:\n" +
+            "/create <b>event-name</b> : Creates a new event (Groups only)\n" +
+            "/delete <b>event-name</b> : Delete the event (Groups only)\n" +
+            "/list <b>event-name</b> : List the subscribers names (Groups only)\n" +
+            "/events : List all the registered events in the current group (Groups only)\n" +
+            "/in <b>event-name</b>: Subscribes to a created event (Groups only)\n" +
+            "/out <b>event-name</b> : Unsubscribe yourself from the event (Groups only)\n" +
+            "/feedback <b>your-message</b> : Send me a feedback if you found some bug or something that may be improved")
 
 
 def create(update, context):
     try:
         if isPrivate(update):
-            say(update, context, 'This command only works in groups', True)
+            say(update, context, 'This command only works in groups')
             return
         args = extractArgs(update)
         if not args:
@@ -74,7 +78,7 @@ def create(update, context):
 
 def delete(update, context):
     if isPrivate(update):
-        say(update, context, 'This command only works in groups', True)
+        say(update, context, 'This command only works in groups')
         return
     args = extractArgs(update)
     if not args:
@@ -95,7 +99,7 @@ def delete(update, context):
 
 def events(update, context):
     if isPrivate(update):
-        say(update, context, 'This command only works in groups', True)
+        say(update, context, 'This command only works in groups')
         return
     chatID = update.message.chat.id
     events = EventService.find_by_chat_id(chatID)
@@ -112,7 +116,7 @@ def events(update, context):
 def subscribe(update, context):
     try:
         if isPrivate(update):
-            say(update, context, 'This command only works in groups', True)
+            say(update, context, 'This command only works in groups')
             return
         args = extractArgs(update)
         if not args:
@@ -135,7 +139,7 @@ def subscribe(update, context):
 
 def unsubscribe(update, context):
     if isPrivate(update):
-        say(update, context, 'This command only works in groups', True)
+        say(update, context, 'This command only works in groups')
         return
     args = extractArgs(update)
     if not args:
@@ -144,7 +148,7 @@ def unsubscribe(update, context):
     chatID = update.message.chat.id
     event = EventService.find_by_name(args, chatID)
     if not event:
-        say(update, context, "There's no events with the given name", True)
+        say(update, context, "There's no events with the given name")
         return
     subscriberID = update.message.from_user.id
     subscription = SubscriptionService.find_by_event_id(event.ID, subscriberID)
@@ -158,7 +162,7 @@ def unsubscribe(update, context):
 
 def list_sub(update, context):
     if isPrivate(update):
-        say(update, context, 'This command only works in groups', True)
+        say(update, context, 'This command only works in groups')
         return
     args = extractArgs(update)
     if not args:
@@ -167,11 +171,11 @@ def list_sub(update, context):
     chatID = update.message.chat.id
     event = EventService.find_by_name(args, chatID)
     if not event:
-        say(update, context, "There's no events with the given name", True)
+        say(update, context, "There's no events with the given name")
         return
     subs = event.get_subs()
     if not subs:
-        say(update, context, "There's no subscriptions to this event yet", True)
+        say(update, context, "There's no subscriptions to this event yet")
         return
     response_message = '<b>' + event.Name + '</b> subscribers:\n'
     for i in range(0, len(subs)):

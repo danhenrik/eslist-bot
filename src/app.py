@@ -6,11 +6,14 @@ from database.db import DatabaseException
 from database.Event import Event, EventService
 from database.Subscription import Subscription, SubscriptionService
 
-
+# TODO
 # Possible future features
 # Command /myEvents tho show my subscribed events
 # Event description
 # Event deadlines
+# At user update update the name on the list
+# At /in add an optional argument between "" with the personalized name
+# Command /clear to clear event subscription list
 
 # Return if the current context of the message is in private
 def isPrivate(update):
@@ -42,20 +45,20 @@ def getHelp(update, context):
         say(update, context, "Commands:\n" +
             "/create <b>event-name</b> : Creates a new event\n" +
             "/delete <b>event-name</b> : Delete the event\n" +
-            "/list <b>event-name</b> : List the subscribers names\n" +
-            "/events : List all the registered events in the current group\n" +
-            "/in <b>event-name</b>: Subscribes to a created event\n" +
-            "/out <b>event-name</b> : Unsubscribe yourself from the event\n" +
-            "/feedback <b>your-message</b> : Send me a feedback if you found some bug or something that may be improved (Private only)\n")
+            "/list <b>event-name</b> : List the subscribers names of the event\n" +
+            "/events : List all the registered events\n" +
+            "/in <b>event-name</b>: Subscribes you to a event\n" +
+            "/out <b>event-name</b> : Unsubscribe you from the event\n" +
+            "/feedback <b>your-message</b> : Send me a feedback if you found some bug or something that can be improved (Private only)\n")
     else:
         say(update, context,  "Commands:\n" +
             "/create <b>event-name</b> : Creates a new event (Groups only)\n" +
             "/delete <b>event-name</b> : Delete the event (Groups only)\n" +
-            "/list <b>event-name</b> : List the subscribers names (Groups only)\n" +
-            "/events : List all the registered events in the current group (Groups only)\n" +
-            "/in <b>event-name</b>: Subscribes to a created event (Groups only)\n" +
-            "/out <b>event-name</b> : Unsubscribe yourself from the event (Groups only)\n" +
-            "/feedback <b>your-message</b> : Send me a feedback if you found some bug or something that may be improved")
+            "/list <b>event-name</b> : List the subscribers names of the event (Groups only)\n" +
+            "/events : List all the registered events (Groups only)\n" +
+            "/in <b>event-name</b>: Subscribes you to a event (Groups only)\n" +
+            "/out <b>event-name</b> : Unsubscribe you from the event (Groups only)\n" +
+            "/feedback <b>your-message</b> : Send me a feedback if you found some bug or something that can be improved")
 
 
 def create(update, context):
